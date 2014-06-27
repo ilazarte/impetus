@@ -19,6 +19,15 @@
    "SLV","SPY","IWM","DIA","EWZ",
    "USO","EEM","QQQ","TLT"])
 
+(def ^:private test-watchlist 
+  ["GOOG", "AAPL", "IBM", "SPY", "RIMM"])
+
+(defmacro ^:private ex-as-nil
+  [forms]
+  `(try
+     ~forms
+     (catch Exception e# nil)))
+
 (defn- datetime->str
   [datetime]
   "Convert a datetime to an rfc822 date"
@@ -27,7 +36,8 @@
 
 (defn execute
   "Execute a study with a certain pricekey and param vector.
-   Ideally we only do date operations once but processing time is fine." 
+   Ideally we only do date operations once but processing time is fine.
+   External error handling required" 
   [symbol study pricekey params]
   (let [prices  (prices/historical-prices symbol)
         symkey  (keyword (str/lower-case symbol))
@@ -41,7 +51,9 @@
 (defn relative
   "Not as sophisticated as original, but moving forward"
   [symbols study pricekey & params]
-  (mapv #(execute (name %) study pricekey params) symbols))
+  (let [fx   #(ex-as-nil (execute (name %) study pricekey params))
+        vals (mapv fx symbols)]
+    (filter (complement nil?) vals)))
 
 (defn relative-update
   "Designed to produce a current last value for a valid call to relative"
