@@ -34,6 +34,16 @@
   (let [fmt (:rfc822 cformat/formatters)]
     (cformat/unparse fmt datetime)))
 
+(defn- formatlocal [n offset]
+  "format a date for use by javascript" 
+  (let [nlocal (ctime/to-time-zone n (ctime/time-zone-for-offset offset))
+        fmt    (cformat/formatters :date-time-no-ms)]
+    (cformat/unparse fmt nlocal)))
+
+(defn- format-edt [n]
+  "format a date for eastern daylight time"
+  (formatlocal n -4))
+
 (defn execute
   "Execute a study with a certain pricekey and param vector.
    Ideally we only do date operations once but processing time is fine.
@@ -44,7 +54,7 @@
         series  (map pricekey prices)
         dates   (map :date prices)
         values  (study/fractions->decimals (apply study series params))
-        measure (mapv #(identity {:x (datetime->str %1) :y %2}) dates values)]
+        measure (mapv #(identity {:x (format-edt %1) :y %2}) dates values)]
     {:symbol symbol
      :values measure}))
 
