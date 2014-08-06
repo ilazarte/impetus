@@ -1,8 +1,8 @@
 (defproject impetus "0.1.0-SNAPSHOT"
   
-  :description "FIXME: write description"
+  :description "A clojure project to attempt to tackle relative momentum."
   
-  :url "http://example.com/FIXME"
+  :url "https://github.com/ilazarte/impetus"
   
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}

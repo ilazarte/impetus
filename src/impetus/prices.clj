@@ -2,8 +2,7 @@
   (:require [clojure.string   :as str]
             [clojure.java.io  :as io]
             [clojure.data.csv :as csv]
-            [clj-time.core    :as ctime]
-            [clj-time.format  :as ctime-format]))
+            [impetus.time     :as time]))
 
 (defn- format-sw
   "basically format, but strip whitespace" 
@@ -19,40 +18,6 @@
                o (io/output-stream file)]
     (io/copy i o)))
 
-;
-; => (map #(ctime-format/unparse (% ctime-format/formatters) (ctime/now)) [:rfc822 :basic-week-date-time :t-time-no-ms :basic-date-time :basic-date-time-no-ms])
-; ("Fri, 20 Sep 2013 05:30:18 +0000" "2013W385T053018.332Z" "T05:30:18Z" "20130920T053018.332Z" "20130920T053018Z")
-;
-(defn- explode-datetime
-  [datetime]
-  "Turns a date until a map of the date as well as its components formatted as strings.
-   Returns month value is 0-indexed to be compatible with yahoo dates"
-  (let [formatter (ctime-format/formatters :date)
-        datestr   (ctime-format/unparse formatter datetime)
-        datelist  (str/split datestr #"-")]
-    {:datetime datetime
-     :year     (nth datelist 0)
-     :month    (as-> (nth datelist 1) x
-                     (java.lang.Integer/valueOf x)
-                     (- x 1)
-                     (format "%02d" x)) 
-     :day      (nth datelist 2)}))
-
-(defn- make-datetimes
-  ([] (make-datetimes :year 1))
-  ([period length]
-  "Get the days back and return start and end dates as a map
-   Available periods are :day :week :month and :year"
-  (let [end      (ctime/today-at-midnight)
-        periodfn (cond (= period :day)   ctime/days
-                       (= period :week)  ctime/weeks
-                       (= period :month) ctime/months
-                       (= period :year)  ctime/years
-                       :else             ctime/days)
-        start    (ctime/minus end (periodfn length))]
-    {:start (explode-datetime start)
-     :end   (explode-datetime end)})))
-
 ; default value in functions 
 ; variadic args: http://stackoverflow.com/questions/3208347/how-to-create-default-value-for-function-argument-in-clojure
 ; named values:  http://thinkrelevance.com/blog/2008/09/16/pcl-clojure-chapter-5
@@ -63,7 +28,7 @@
   ([symbol period length]
   "Downloads historical price for <symbol> of <period>
    Valid values for <period> are :day :month :year"
-  (let [datetimes   (make-datetimes period length)
+  (let [datetimes   (time/make-datetimes period length)
         start       (datetimes :start)
         end         (datetimes :end)
         start-month (start :month)
@@ -104,12 +69,10 @@
    Returns parsed down for options."
   []
   (let [conv  #(%1 %2)
-        fmt   (ctime-format/formatters :date)
-        pdate #(ctime-format/parse fmt %)
         pdoub #(java.lang.Double/parseDouble %)
         plong #(java.lang.Long/parseLong %)
         cols  [:date :open :high :low :close :volume :adjclose]
-        fns   [pdate pdoub pdoub pdoub pdoub plong pdoub]]
+        fns   [time/parse-date pdoub pdoub pdoub pdoub plong pdoub]]
     (fn
       [coll]
       (zipmap cols (map conv fns coll)))))

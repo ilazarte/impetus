@@ -4,11 +4,10 @@ A few functions to compare momentum between equities.
 
 ## Usage
 
-too early still for use.
+too early still for use despite some specifying a dsl for study calculations.
 
 ## License
 
-Copyright © 2014 FIXME
+Copyright &copy 2014 ilazarte
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Distributed under the Eclipse Public License either version 1.0.
