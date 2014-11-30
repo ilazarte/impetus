@@ -1,6 +1,7 @@
 (ns impetus.time
   (:require [clojure.string  :as str] 
             [clj-time.core   :as ctime]
+            [clj-time.coerce :as ccoerce] 
             [clj-time.format :as cformat]))
 
 (def ^:private edt (ctime/time-zone-for-offset -4))
@@ -29,6 +30,11 @@
   [datetime]
   (let [fmt (:rfc822 cformat/formatters)]
     (cformat/unparse fmt datetime)))
+
+(defn parse-millis
+  "Return a datetime from a string representing unix timestamp"
+  [str]
+  (ccoerce/from-long (read-string str)))
 
 ; TODO expand to multiple parser explained in clj-time docs
 (defn parse-date [str]

@@ -27,12 +27,16 @@
      ~forms
      (catch Exception e# nil)))
 
+; a lot of params are passed down
+; this is a prime candidate for a map
+
 (defn execute
   "Execute a study with a certain pricekey and param vector.
    Ideally we only do date operations once but processing time is fine.
    External error handling required" 
-  [symbol study pricekey params]
-  (let [prices  (prices/historical-prices symbol)
+  [symbol study type pricekey params]
+  (let [pricefn (if (= :historical type) prices/historical-prices prices/intraday-prices)
+        prices  (pricefn symbol)
         symkey  (keyword (str/lower-case symbol))
         series  (map pricekey prices)
         dates   (map :date prices)
@@ -43,11 +47,13 @@
 
 (defn relative
   "Not as sophisticated as original, but moving forward"
-  [symbols study pricekey & params]
-  (let [fx   #(ex-as-nil (execute (name %) study pricekey params))
-        vals (mapv fx symbols)]
-    (filter (complement nil?) vals)))
+  [symbols study type pricekey & params]
+  (let [fx       #(ex-as-nil (execute (name %) study type pricekey params))
+        vals     (mapv fx symbols)
+        not-nil? (complement nil?)]
+    (filter not-nil? vals)))
 
+; TODO not sure if this is still needed...
 (defn relative-update
   "Designed to produce a current last value for a valid call to relative"
   [& args]
@@ -57,8 +63,12 @@
 
 (defn make-price-ma-ratio-list
   [symbols]
-  (relative symbols study/price-to-moving-average-ratio :adjclose 20))
+  (relative symbols study/price-to-moving-average-ratio :historical :adjclose 20))
+
+(defn make-price-ma-ratio-list-intraday
+  [symbols]
+  (relative symbols study/price-to-moving-average-ratio :intraday :close 20))
 
 (defn make-price-ma-ratio-list-update
   [symbols]
-  (relative-update symbols study/price-to-moving-average-ratio :adjclose 20))
+  (relative-update symbols study/price-to-moving-average-ratio :historical :adjclose 20))

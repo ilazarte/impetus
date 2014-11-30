@@ -4,6 +4,18 @@
             [clojure.data.csv :as csv]
             [impetus.time     :as time]))
 
+(defn- times
+  "Repeat a function n times against a value"
+  [fx n val]
+  (if (= n 0)
+    val
+    (recur fx (dec n) (fx val))))
+
+(defn- indices
+  "http://stackoverflow.com/questions/8641305/find-index-of-an-element-matching-a-predicate-in-clojure"
+  [pred coll]
+   (keep-indexed #(when (pred %2) %1) coll))
+
 (defn- format-sw
   "basically format, but strip whitespace" 
   [fmt & args]
@@ -23,8 +35,8 @@
 ; named values:  http://thinkrelevance.com/blog/2008/09/16/pcl-clojure-chapter-5
 ; named value seem to work best when you have a tuple of optional arguments
 ; otherwise, variadic functions seem really convenient and a little more clear
-(defn- make-yahoo-download-url
-  ([symbol] (make-yahoo-download-url symbol :year 1))
+(defn- make-yahoo-historical-download-url
+  ([symbol] (make-yahoo-historical-download-url symbol :year 1))
   ([symbol period length]
   "Downloads historical price for <symbol> of <period>
    Valid values for <period> are :day :month :year"
@@ -46,7 +58,11 @@
 		      start-month start-day start-year
 		      end-month end-day end-year)))) 
 
-(defn- read-cached-yahoo-historical-url
+(defn- make-yahoo-intraday-download-url
+  [symbol]
+  (format-sw "http://chartapi.finance.yahoo.com/instrument/1.0/%s/chartdata;type=quote;range=5d/csv" symbol))
+
+(defn- read-cached-yahoo-url
   "Read a url whose data will be cached for x minutes, makes filename unique to symbol"
   [url readfn maxtimeinminutes]
   (let [symbol  (-> (re-seq #".*s=([A-Z]+).*" url) first last)
@@ -77,7 +93,7 @@
       [coll]
       (zipmap cols (map conv fns coll)))))
 
-(defn- yahoo-file-reader
+(defn- yahoo-historical-file-reader
   "Reads values from the csv, has to reverse since yahoo outputs most recent dates at top"
   [file]
   (with-open [in-file (io/reader file)]
@@ -89,6 +105,35 @@
    TODO add symbol period length as another form"
   [symbol]
   (let [symbol-up    (str/upper-case symbol)
-        url          (make-yahoo-download-url symbol-up)
+        url          (make-yahoo-historical-download-url symbol-up)
         time-in-mins (* 4 60)]
-    (read-cached-yahoo-historical-url url yahoo-file-reader time-in-mins)))
+    (read-cached-yahoo-url url yahoo-historical-file-reader time-in-mins)))
+
+(defn- make-yahoo-intraday-parser
+  "Produce a function to parse a valid csv line of the yahoo intraday format."
+  []
+  (let [conv  #(%1 %2)
+        cols   [:date :close :high :low :open :volume]
+        pdoub  #(java.lang.Double/parseDouble %)
+        plong  #(java.lang.Long/parseLong %)
+        pdate  #(-> (str % "000") time/parse-millis) 
+        fns    [pdate pdoub pdoub pdoub pdoub plong]]
+    (fn [line]
+      (zipmap cols (map conv fns (re-seq #"[\d\.]+" line))))))
+
+(defn intraday-prices
+  "Download the intraday and ohlc price data"
+  [symbol]
+  (let [url    (make-yahoo-intraday-download-url symbol)
+        reader #(slurp %)
+        prices (read-cached-yahoo-url url reader 5)
+        lines  (str/split prices #"\n")
+        vol?   #(.startsWith (str/lower-case %) "volume")
+        sidx   (-> 
+                 (indices vol? lines)
+                 first
+                 inc)
+        recs   (times rest sidx lines)
+        parser (make-yahoo-intraday-parser)
+        vals   (map parser recs)]
+    vals))

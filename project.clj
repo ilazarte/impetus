@@ -9,4 +9,4 @@
   
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/data.csv "0.1.2"]
-                 [clj-time "0.5.1"]])
+                 [clj-time "0.8.0"]])
