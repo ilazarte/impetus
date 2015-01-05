@@ -19,7 +19,7 @@
    "USO","EEM","QQQ","TLT"])
 
 (def ^:private test-watchlist 
-  ["GOOG", "AAPL", "IBM", "SPY", "RIMM"])
+  ["GOOG", "AAPL"])
 
 (defmacro ^:private ex-as-nil
   [forms]
@@ -54,6 +54,7 @@
     (filter not-nil? vals)))
 
 ; TODO not sure if this is still needed...
+; TODO get rid of these already...
 (defn relative-update
   "Designed to produce a current last value for a valid call to relative"
   [& args]

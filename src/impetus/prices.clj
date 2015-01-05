@@ -65,20 +65,19 @@
 (defn- read-cached-yahoo-url
   "Read a url whose data will be cached for x minutes, makes filename unique to symbol"
   [url readfn maxtimeinminutes]
-  (let [symbol  (-> (re-seq #".*s=([A-Z]+).*" url) first last)
-        csvname (str "tmp/" symbol ".cache")
-        file    (io/as-file csvname)
-        exists  (.exists file)]
-    (when-not exists
+  (let [safeurl (str/replace (.substring url 7) #"[^\w]" "-")
+        csvname (str "tmp/" safeurl ".cache")
+        file    (io/as-file csvname)] 
+    (if (.exists file)
+      (let [maxtimeinmillis (* maxtimeinminutes 60 1000)
+            modtime         (.lastModified file)
+            currtime        (java.lang.System/currentTimeMillis)
+            difftime        (- currtime modtime)
+            update?         (> difftime maxtimeinmillis)]
+        (when update?
+          (download url file)))
       (download url file))
-    (let [maxtimeinmillis (* maxtimeinminutes 60 1000)
-          modtime         (.lastModified file)
-          currtime        (java.lang.System/currentTimeMillis)
-          difftime        (- currtime modtime)
-          update?         (> difftime maxtimeinmillis)]
-      (when update?
-        (download url file))
-      (readfn file))))
+    (readfn file)))
 
 (defn- make-yahoo-csv-line-parser
   "Higher order function to parse yahoo csv format
