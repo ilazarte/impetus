@@ -99,14 +99,18 @@
     (let [lines (doall (csv/read-csv in-file))]
       (reverse (map (make-yahoo-csv-line-parser) (rest lines))))))
 
-(defn historical-prices
-  "Download cache and ohlc price data
-   TODO add symbol period length as another form"
-  [symbol]
-  (let [symbol-up    (str/upper-case symbol)
-        url          (make-yahoo-historical-download-url symbol-up)
-        time-in-mins (* 4 60)]
-    (read-cached-yahoo-url url yahoo-historical-file-reader time-in-mins)))
+(defn- last-closes
+  "get the last two closes from the intraday values"
+  [prices]
+  (let [vals  (drop 3 
+                (map last 
+                  (partition-by #(-> % :date .dayOfWeek .get) prices)))
+        to-mid   #(.toDateTime (.toDateMidnight %))
+        add-key  #(assoc % :adjclose (:close %))
+        del-key  #(dissoc % :close)
+        new-date #(update-in % [:date] to-mid)
+        nvals    (map (comp new-date del-key add-key) vals)]
+    nvals))
 
 (defn- make-yahoo-intraday-parser
   "Produce a function to parse a valid csv line of the yahoo intraday format."
@@ -136,3 +140,13 @@
         parser (make-yahoo-intraday-parser)
         vals   (map parser recs)]
     vals))
+
+(defn historical-prices
+  "Download cache and ohlc price data
+   Commenting out merging with last intraday as feed appears fixed
+   TODO add symbol period length as another form"
+  [symbol]
+  (let [symbol-up    (str/upper-case symbol)
+        url          (make-yahoo-historical-download-url symbol-up)
+        time-in-mins (* 4 60)]
+    (read-cached-yahoo-url url yahoo-historical-file-reader time-in-mins)))

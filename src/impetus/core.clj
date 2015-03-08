@@ -1,8 +1,8 @@
 (ns impetus.core
-  (:require [clojure.string  :as str]
-            [impetus.prices  :as prices]
-            [impetus.study   :as study]
-            [impetus.time    :as time]))
+  (:require [clojure.string :as str]
+            [impetus.prices :as prices]
+            [impetus.study  :as study]
+            [impetus.time   :as time]))
 
 (def ^:private main-watchlist 
   ["AAPL", "AMZN", "BAC", "BIDU", "CAT",
@@ -21,7 +21,8 @@
 (def ^:private test-watchlist 
   ["GOOG", "AAPL"])
 
-(defmacro ^:private ex-as-nil
+(defmacro ^:private exception->nil
+  "catch any exception and return nil if it occurs"
   [forms]
   `(try
      ~forms
@@ -41,35 +42,22 @@
         series  (map pricekey prices)
         dates   (map :date prices)
         values  (study/fractions->decimals (apply study series params))
-        measure (mapv #(identity {:x (time/datetime->str %1) :y %2}) dates values)]
+        conv    #(identity {:x (time/datetime->str %1) :y %2})
+        measure (mapv conv dates values)]
     {:symbol symbol
      :values measure}))
 
 (defn relative
   "Not as sophisticated as original, but moving forward"
   [symbols study type pricekey & params]
-  (let [fx       #(ex-as-nil (execute (name %) study type pricekey params))
-        vals     (mapv fx symbols)
-        not-nil? (complement nil?)]
-    (filter not-nil? vals)))
-
-; TODO not sure if this is still needed...
-; TODO get rid of these already...
-(defn relative-update
-  "Designed to produce a current last value for a valid call to relative"
-  [& args]
-  (let [last-element (comp vector last)
-        keep-last     #(update-in % [:values] last-element)]
-    (mapv keep-last (apply relative args))))
+  (let [fx   #(exception->nil (execute (name %) study type pricekey params))
+        vals (mapv fx symbols)]
+    (filter (complement nil?) vals)))
 
 (defn make-price-ma-ratio-list
-  [symbols]
+  [symbols] 
   (relative symbols study/price-to-moving-average-ratio :historical :adjclose 20))
 
 (defn make-price-ma-ratio-list-intraday
   [symbols]
   (relative symbols study/price-to-moving-average-ratio :intraday :close 20))
-
-(defn make-price-ma-ratio-list-update
-  [symbols]
-  (relative-update symbols study/price-to-moving-average-ratio :historical :adjclose 20))

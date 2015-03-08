@@ -70,10 +70,8 @@
 
 (defn window
   "Apply a function on a window into a collection
-
   TODO wow, this could have been simpler...
        http://stackoverflow.com/questions/1427894/sliding-window-over-seq
-
   Usage: 
     Moving average of 20 on a 100 numbers, no extra parameters.
     (window (range 100) 20 average)" 
@@ -83,22 +81,16 @@
     (loop [i   1
            res (transient [])]
       (cond
-        
-        (< i len)    
-        (recur 
-          (inc i) 
-          (conj! res nil))
-        
-        (< i maxidx) 
-        (let [start (- i len)
-              svec  (subvec veccoll start i)
-              val   (apply fx svec params)]
-          (recur 
-            (inc i) 
-            (conj! res val)))
-        
-        :else        
-        (persistent! res)))))
+        (< i len) (recur 
+                    (inc i) 
+                    (conj! res nil))
+        (< i maxidx) (let [start (- i len)
+                           svec  (subvec veccoll start i)
+                           val   (apply fx svec params)]
+                       (recur 
+                         (inc i) 
+                         (conj! res val)))
+        :else (persistent! res)))))
 
 (defn shift
   "Move a collection values by n position.
